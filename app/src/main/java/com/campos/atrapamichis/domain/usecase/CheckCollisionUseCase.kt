@@ -15,7 +15,7 @@ class CheckCollisionUseCase {
         val rectLeft = cat.position.x - (cat.width / 2f)
         val rectRight = cat.position.x + (cat.width / 2f)
         val rectTop = cat.position.y - (cat.height / 2f)
-        val rectBottom = cat.position.y - (cat.height / 2f)
+        val rectBottom = cat.position.y + (cat.height / 2f)
 
         for (item in items){
             // Encontramos el punto del rectangulo más cercano al centro del circulo

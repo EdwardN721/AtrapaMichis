@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,20 +17,32 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.campos.atrapamichis.R
+import com.campos.atrapamichis.domain.enums.CatEmotion
 import com.campos.atrapamichis.domain.enums.ItemType
 
 @Composable
 fun GameScreen(viewModel: GameViewModel) {
     // Observamos el estado del ViewModel (equivalente a un Hook o Signal)
-    val state by viewModel.state.collectAsState();
+    val state by viewModel.state.collectAsState()
+
+    // 1. Cargar imagenes
+    val catNormalImage = ImageBitmap.imageResource(id = R.drawable.cat)
+    val catHappyImage = ImageBitmap.imageResource(id = R.drawable.cat_happy)
+    val catAngryImage = ImageBitmap.imageResource(id = R.drawable.cat_angry)
+    val fishImage = ImageBitmap.imageResource(id = R.drawable.fish)
+    val yarnImage = ImageBitmap.imageResource(id = R.drawable.yarn)
+    val cucumberImage = ImageBitmap.imageResource(id = R.drawable.cucumber)
 
     // Box nos permite apilar elementos en el eje Z (uno sobre otro)
     Box(modifier = Modifier.fillMaxSize()) {
@@ -61,30 +74,42 @@ fun GameScreen(viewModel: GameViewModel) {
             // --- ZONA DE DIBUJO ---
             val cat = state.cat
 
-            // 1. Dibujamos al michi (cuadrado naranja)
-            // El punto (x, y) de nuestro modelo es el centro, así que calculamos la esquina superior izquierda
-            drawRect(
-                color = androidx.compose.ui.graphics.Color(0xFFFFA500), // Naranja
-                topLeft = Offset(
-                    x = cat.position.x - (cat.width / 2f),
-                    y = cat.position.y - (cat.height / 2f)
+            // Elige la cara a dibujar según su estado
+            val imageToDraw = when(state.catEmotion){
+                CatEmotion.NORMAL -> catNormalImage
+                CatEmotion.HAPPY -> catHappyImage
+                CatEmotion.ANGRY -> catAngryImage
+            }
+
+            // 1. Dibujar al gato con la imagen cargada
+            drawImage(
+                image = imageToDraw,
+                dstOffset = IntOffset(
+                    x = (cat.position.x - (cat.width / 2f)).toInt(),
+                    y = (cat.position.y - (cat.height / 2f)).toInt()
                 ),
-                size = Size(cat.width, cat.height)
+                dstSize = IntSize(cat.width.toInt(), cat.height.toInt())
             )
 
             // 2. Dibujamos los objetos cayendo
             state.fallingItem.forEach { item ->
-                // Elegimos un color dependiendo de si es comida o un pepino
-                val itemColor = when (item.type) {
-                    ItemType.FISH -> Color(0xFF00BCD4) // Azul
-                    ItemType.YARN -> Color(0xFFFF69B4) // Rosa
-                    ItemType.CUCUMBER -> Color(0xFF008000) // Verde
+                // Elegimos la imagen correspondiente
+                val imageToDraw = when (item.type) {
+                    ItemType.FISH -> fishImage // Pescadp
+                    ItemType.YARN -> yarnImage // Estambre
+                    ItemType.CUCUMBER -> cucumberImage // Pepino
                 }
 
-                drawCircle(
-                    color = itemColor,
-                    radius = item.radius,
-                    center = Offset(x = item.position.x, y = item.position.y)
+                // El radio determina el tamaño total de la imagen (diámetro = radio * 2)
+                val imageSize = (item.radius * 2).toInt()
+
+                drawImage(
+                    image = imageToDraw,
+                    dstOffset = IntOffset(
+                        x = (item.position.x - item.radius).toInt(),
+                        y = (item.position.y - item.radius).toInt()
+                    ),
+                    dstSize = IntSize(imageSize, imageSize)
                 )
             }
         }
@@ -97,12 +122,21 @@ fun GameScreen(viewModel: GameViewModel) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top
         ) {
-            Text(
-                text = "Puntos: ${state.score}",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
+            // Usamos una columna para apilar los Puntos y el Récord del lado izquierdo
+            Column {
+                Text(
+                    text = "Puntos: ${state.score}",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                Text(
+                    text = "Récord: ${state.highScore}", // ¡Aquí mostramos el récord!
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.DarkGray
+                )
+            }
             Text(
                 text = "Vidas: ${state.lives}",
                 fontSize = 28.sp,
@@ -120,7 +154,11 @@ fun GameScreen(viewModel: GameViewModel) {
                 contentAlignment = Alignment.Center
             ){
                 Text(
-                    text = "¡Estas Muerto!\nPuntos Finales: ${state.score}",
+                    text = """
+                        ¡Estas Muerto!
+                        Puntos Finales: ${state.score}
+                        Récord Máximo: ${state.highScore}
+                    """.trimIndent(),
                     color = Color.White,
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,

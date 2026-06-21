@@ -2,8 +2,10 @@ package com.campos.atrapamichis.presentation.game
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.campos.atrapamichis.domain.enums.CatEmotion
 import com.campos.atrapamichis.domain.model.Cat
 import com.campos.atrapamichis.domain.model.Position
+import com.campos.atrapamichis.domain.repository.GameRespository
 import com.campos.atrapamichis.domain.usecase.CheckCollisionUseCase
 import com.campos.atrapamichis.domain.usecase.MoveCatUseCase
 import com.campos.atrapamichis.domain.usecase.SpawnItemUseCase
@@ -14,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
-class GameViewModel : ViewModel() {
+class GameViewModel(private val repository: GameRespository) : ViewModel() {
     private val _state = MutableStateFlow(GameState())
     val state: StateFlow<GameState> = _state.asStateFlow()
 
@@ -33,6 +35,11 @@ class GameViewModel : ViewModel() {
     private var framesSinceLastSpawn = 0
 
     init {
+        viewModelScope.launch {
+            repository.getHighScore().collect() { record ->
+                _state.value = _state.value.copy(highScore = record)
+            }
+        }
         startGameLoop()
     }
 
@@ -80,19 +87,41 @@ class GameViewModel : ViewModel() {
         val newLives = currentState.lives - collitionResult.lostLives
         val gameOver = newLives <= 0
 
+        // Si el juego acaba de terminar, intentamos guardar el récord
+        if (gameOver && !currentState.isGameOver) {
+            viewModelScope.launch {
+                repository.saveHighScore(newScore)
+            }
+        }
+
+        // Emociones del gato
+        var currentEmotion = currentState.catEmotion
+        if (collitionResult.addScore > 0 || collitionResult.lostLives > 0){
+            currentEmotion = if (collitionResult.addScore > 0) CatEmotion.HAPPY else CatEmotion.ANGRY
+
+            viewModelScope.launch {
+                delay(500.milliseconds)
+                _state.value = _state.value.copy(catEmotion = CatEmotion.NORMAL)
+            }
+        }
+
         // 5. Spawner de nuevos items
         val finalItems = collitionResult.remainingItems.toMutableList()
         framesSinceLastSpawn++
-        if (framesSinceLastSpawn >= 60){
+        if (framesSinceLastSpawn >= 60) {
             val newItem = spawnItemUseCase(currentState.screenWidth)
             finalItems.add(newItem)
             framesSinceLastSpawn = 0
         }
 
-        // 2. Emitimos el nuevo estado (Compose redibujara la pantalla)
+        // 6. Emitimos el nuevo estado (Compose redibujara la pantalla)
         _state.value = currentState.copy(
             cat = updateCat,
-            fallingItem = movedItems
+            fallingItem = finalItems, // items sigan cayendo
+            score = newScore,         // actualizar los puntos
+            lives = newLives,         // actualizar las vidas!
+            isGameOver = gameOver,    // señal de fin de juego
+            catEmotion = currentEmotion
         )
     }
 
