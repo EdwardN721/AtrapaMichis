@@ -35,6 +35,9 @@ class GameViewModel(private val repository: GameRespository) : ViewModel() {
     private var framesSinceLastSpawn = 0
 
     init {
+        val initialTheme = ThemeManager.getCurrentTheme()
+        _state.value = _state.value.copy(currentTheme = initialTheme)
+
         viewModelScope.launch {
             repository.getHighScore().collect() { record ->
                 _state.value = _state.value.copy(highScore = record)
