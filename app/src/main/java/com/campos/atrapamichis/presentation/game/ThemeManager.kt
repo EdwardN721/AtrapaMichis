@@ -5,7 +5,9 @@ import java.time.LocalDate
 
 object ThemeManager {
     fun getCurrentTheme(): GameTheme {
-        val today = LocalDate.now()
+        //val today = LocalDate.now()
+        val today = LocalDate.of(2026, 9, 13)
+
         val month = today.monthValue
         val day = today.dayOfMonth
 

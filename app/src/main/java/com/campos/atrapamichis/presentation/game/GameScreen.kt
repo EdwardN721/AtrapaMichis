@@ -1,6 +1,7 @@
 package com.campos.atrapamichis.presentation.game
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -20,8 +21,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -29,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.campos.atrapamichis.R
 import com.campos.atrapamichis.domain.enums.CatEmotion
+import com.campos.atrapamichis.domain.enums.GameTheme
 import com.campos.atrapamichis.domain.enums.ItemType
 
 @Composable
@@ -36,21 +40,44 @@ fun GameScreen(viewModel: GameViewModel) {
     // Observamos el estado del ViewModel (equivalente a un Hook o Signal)
     val state by viewModel.state.collectAsState()
 
-    // 1. Cargar imagenes
-    val catNormalImage = ImageBitmap.imageResource(id = R.drawable.cat)
-    val catHappyImage = ImageBitmap.imageResource(id = R.drawable.cat_happy)
-    val catAngryImage = ImageBitmap.imageResource(id = R.drawable.cat_angry)
-    val fishImage = ImageBitmap.imageResource(id = R.drawable.fish)
-    val yarnImage = ImageBitmap.imageResource(id = R.drawable.yarn)
-    val cucumberImage = ImageBitmap.imageResource(id = R.drawable.cucumber)
+    // Obtenemos el tema actual
+    val theme = state.currentTheme
+
+    // Decidir fondo
+    val backgroundResId = when (theme){
+        GameTheme.BIRTHDAY -> R.drawable.birthday_fondo
+        GameTheme.DAY_OF_THE_DEAD -> R.drawable.dayofthedead_fondo
+        GameTheme.CHRISTMAS -> R.drawable.christmas_fondo
+        else -> 0
+    }
+
+    // Obtener Id de imagen
+    val fishImageRes = obtenerImagenPez(theme)
+    val catImageRes = obtenerImagenGato(theme, state.catEmotion)
+    val yarnImageRes = obtenerImagenEstambre(theme)
+    val cucumberImageRes = obtenerImagenPepinillo(theme)
+
+    // 1. Cargar imágenes en memoria
+    val catImage = ImageBitmap.imageResource(id = catImageRes)
+    val fishImage = ImageBitmap.imageResource(id = fishImageRes)
+    val yarnImage = ImageBitmap.imageResource(id = yarnImageRes)
+    val cucumberImage = ImageBitmap.imageResource(id = cucumberImageRes)
 
     // Box nos permite apilar elementos en el eje Z (uno sobre otro)
     Box(modifier = Modifier.fillMaxSize()) {
-
+        if (backgroundResId != 0){
+            Image(
+                painter = painterResource(id = backgroundResId),
+                contentDescription = "Fondo",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF87CEEB)))
+        }
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF87CEEB)) // Color de cielo temporal
                 .onSizeChanged { size ->
                     // Notificamos al ViewModel el tamaño real de la pantalla en píxeles
                     viewModel.updateScreenDimensions(size.width.toFloat(), size.height.toFloat())
@@ -74,16 +101,9 @@ fun GameScreen(viewModel: GameViewModel) {
             // --- ZONA DE DIBUJO ---
             val cat = state.cat
 
-            // Elige la cara a dibujar según su estado
-            val imageToDraw = when(state.catEmotion){
-                CatEmotion.NORMAL -> catNormalImage
-                CatEmotion.HAPPY -> catHappyImage
-                CatEmotion.ANGRY -> catAngryImage
-            }
-
             // 1. Dibujar al gato con la imagen cargada
             drawImage(
-                image = imageToDraw,
+                image = catImage,
                 dstOffset = IntOffset(
                     x = (cat.position.x - (cat.width / 2f)).toInt(),
                     y = (cat.position.y - (cat.height / 2f)).toInt()
@@ -168,3 +188,59 @@ fun GameScreen(viewModel: GameViewModel) {
         }
     }
 }
+
+// #region Metodos Privados
+
+private fun obtenerImagenPez(theme: GameTheme): Int {
+    return when (theme) {
+        GameTheme.BIRTHDAY -> R.drawable.birthday_pastel
+        GameTheme.DAY_OF_THE_DEAD -> R.drawable.dayofthedead_pan
+        GameTheme.CHRISTMAS -> R.drawable.christmas_calcetin
+        else -> R.drawable.normal_fish
+    }
+}
+private fun obtenerImagenGato(theme: GameTheme, emotion: CatEmotion): Int {
+    return when (theme){
+        GameTheme.BIRTHDAY -> when (emotion){
+            CatEmotion.HAPPY -> R.drawable.birthday_cat_happy
+            CatEmotion.ANGRY -> R.drawable.birthday_cat_angry
+            else -> R.drawable.birthday_cat_normal
+        }
+        GameTheme.DAY_OF_THE_DEAD -> when (emotion){
+            CatEmotion.HAPPY -> R.drawable.dayofthedead_cat_happy
+            CatEmotion.ANGRY -> R.drawable.dayofthedead_cat_angry
+            else -> R.drawable.dayofthedead_cat_normal
+        }
+        GameTheme.CHRISTMAS -> when (emotion){
+            CatEmotion.HAPPY -> R.drawable.christmas_cat_happy
+            CatEmotion.ANGRY -> R.drawable.christmas_cat_angry
+            else -> R.drawable.christmas_cat_normal
+        }
+        else -> when (emotion){
+            CatEmotion.HAPPY -> R.drawable.normal_cat_happy
+            CatEmotion.ANGRY -> R.drawable.normal_cat_angry
+            else -> R.drawable.normal_cat
+        }
+    }
+}
+
+private fun obtenerImagenEstambre(theme: GameTheme): Int {
+    return when (theme) {
+        GameTheme.BIRTHDAY -> R.drawable.birthday_yarn
+        GameTheme.DAY_OF_THE_DEAD -> R.drawable.dayofthedead_yarn
+        GameTheme.CHRISTMAS -> R.drawable.christmas_yarn
+        else -> R.drawable.normal_yarn
+    }
+}
+
+private fun obtenerImagenPepinillo(theme: GameTheme): Int {
+    return when (theme) {
+        GameTheme.BIRTHDAY -> R.drawable.birthday_cucumber
+        GameTheme.DAY_OF_THE_DEAD -> R.drawable.dayofthedead_cucumber
+        GameTheme.CHRISTMAS -> R.drawable.christmas_cucumber
+        else -> R.drawable.normal_cucumber
+    }
+}
+
+// #endregion
+
